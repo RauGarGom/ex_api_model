@@ -11,9 +11,11 @@ def test_predict_endpoint():
     url = 'http://localhost:8000/predict'  
     data = {'data': [[100, 100, 200]]} 
     
-    response = requests.get(url, json=data)
+    response = requests.post(url, json=data)
     assert response.status_code == 200
-    assert 'prediction' in response.json()
+    response_json = response.json()
+    assert 'prediction' in response_json
+    assert isinstance(response_json['prediction'], float)
 
 def test_retrain_endpoint():
     url = 'http://localhost:8000/retrain'  
