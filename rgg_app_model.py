@@ -5,7 +5,6 @@ import pickle
 import pandas as pd
 import sqlite3
 
-model = pickle.load(open('model/advertising_model.pkl','rb'))
 class RawData(BaseModel):
     data: list[list[int]]
 class Prediction(BaseModel):
@@ -28,8 +27,9 @@ async def home():
 
 
 # 1. Endpoint de predicción
-@app.post('/predict')
+@app.get('/predict')
 async def prediction(pred:Prediction):
+    model = pickle.load(open('model/advertising_model.pkl','rb'))
     input_data = pred.data[0]
     result = model.predict([[input_data[0], input_data[1], input_data[2]]])
     return {"prediction": result[0]}
@@ -48,11 +48,14 @@ async def new_data(data: RawData):
             (record[0], record[1], record[2], record[3])
         )
     conn.commit()
+    conn.close() ### Importante cerrar siempre las conexiones
     return {'message': 'Datos ingresados correctamente'}
 
 # 2. Endpoint de reentramiento del modelo
 @app.post('/retrain')
 async def retrain():
+    conn = sqlite3.connect('data/database.db')
+    cursor = conn.cursor()
     cursor.execute(
         '''
         SELECT * FROM advertising;
@@ -68,9 +71,13 @@ async def retrain():
     df_res = pd.DataFrame(res_dict)
     x1_train = df_res.drop(columns='sales')
     y1_train = df_res['sales']
+    model = pickle.load(open('model/advertising_model.pkl','rb'))
     model.fit(x1_train,y1_train)
     pickle.dump(model,open('./model/advertising_model.pkl','wb'))
+    conn.close()
     return {'message': 'Modelo reentrenado correctamente.'} 
 
 if __name__ == "__main__":
-    uvicorn.run(app, host="0.0.0.0", port=5000)
+    uvicorn.run(app, host="0.0.0.0", port=8000)
+
+    ### Puede ser interesante no meter esto, y directamente correr mediante terminal "uvicorn rgg_app_model:app"
